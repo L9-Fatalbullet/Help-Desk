@@ -9,6 +9,8 @@
   
   body {
     @apply bg-gray-50 text-gray-900;
+    font-family: 'Inter', 'Segoe UI', 'Arial', sans-serif;
+    background: #f8f9fa;
   }
 }
 
@@ -99,4 +101,22 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+}
+
+.te-gradient-bg {
+  background: linear-gradient(90deg, #FF2B2B 0%, #FF7F1A 20%, #FFD600 40%, #00C389 60%, #0072FF 80%, #A259FF 100%);
+}
+
+.te-gradient-btn {
+  background: linear-gradient(90deg, #FF2B2B 0%, #FF7F1A 20%, #FFD600 40%, #00C389 60%, #0072FF 80%, #A259FF 100%);
+  color: white;
+  border: none;
+  border-radius: 9999px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  transition: box-shadow 0.2s;
+}
+
+.te-gradient-btn:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  opacity: 0.95;
 } 

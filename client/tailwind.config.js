@@ -2,6 +2,7 @@
 module.exports = {
   content: [
     "./src/**/*.{js,jsx,ts,tsx}",
+    "./public/index.html"
   ],
   theme: {
     extend: {
@@ -53,7 +54,13 @@ module.exports = {
           700: '#b91c1c',
           800: '#991b1b',
           900: '#7f1d1d',
-        }
+        },
+        'te-red': '#FF2B2B',
+        'te-orange': '#FF7F1A',
+        'te-yellow': '#FFD600',
+        'te-green': '#00C389',
+        'te-blue': '#0072FF',
+        'te-purple': '#A259FF',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
@@ -76,6 +83,9 @@ module.exports = {
           '0%': { transform: 'translateY(-10px)', opacity: '0' },
           '100%': { transform: 'translateY(0)', opacity: '1' },
         },
+      },
+      backgroundImage: {
+        'te-gradient': 'linear-gradient(90deg, #FF2B2B 0%, #FF7F1A 20%, #FFD600 40%, #00C389 60%, #0072FF 80%, #A259FF 100%)',
       },
     },
   },
