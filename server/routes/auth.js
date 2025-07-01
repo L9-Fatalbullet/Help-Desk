@@ -1,7 +1,13 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
-const User = require('../models/User');
+const {
+  getUsers,
+  findUserByEmail,
+  findUserById,
+  addUser,
+  updateUser
+} = require('../models/User');
 const { authenticateToken, authorizeAdmin } = require('../middleware/auth');
 
 const router = express.Router();
@@ -29,30 +35,21 @@ router.post('/login', [
     }
 
     const { email, password } = req.body;
-
-    // Find user by email
-    const user = await User.findOne({ email });
+    const user = findUserByEmail(req.app, email);
     if (!user || !user.isActive) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
-
-    // Check password
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
+    // Plaintext password check (for demo only)
+    if (user.password !== password) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
-
-    // Update last login
     user.lastLogin = new Date();
-    await user.save();
-
     // Generate token
-    const token = generateToken(user._id);
-
+    const token = generateToken(user.id);
     res.json({
       token,
       user: {
-        id: user._id,
+        id: user.id,
         username: user.username,
         email: user.email,
         role: user.role,
@@ -87,7 +84,6 @@ router.post('/register', [
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
-
     const {
       username,
       email,
@@ -98,43 +94,36 @@ router.post('/register', [
       gasStationLocation,
       phone
     } = req.body;
-
     // Check if user already exists
-    const existingUser = await User.findOne({
-      $or: [{ email }, { username }]
-    });
-
+    const existingUser = getUsers(req.app).find(
+      u => u.email === email || u.username === username
+    );
     if (existingUser) {
       return res.status(400).json({ 
         message: 'User with this email or username already exists' 
       });
     }
-
-    // Validate gas station location for gas station users
     if (role === 'gas-station' && !gasStationLocation) {
       return res.status(400).json({ 
         message: 'Gas station location is required for gas station users' 
       });
     }
-
-    // Create new user
-    const user = new User({
+    const user = addUser(req.app, {
       username,
       email,
-      password,
+      password, // plaintext for demo
       firstName,
       lastName,
       role,
       gasStationLocation,
-      phone
+      phone,
+      isActive: true,
+      lastLogin: null
     });
-
-    await user.save();
-
     res.status(201).json({
       message: 'User created successfully',
       user: {
-        id: user._id,
+        id: user.id,
         username: user.username,
         email: user.email,
         role: user.role,
@@ -154,8 +143,10 @@ router.post('/register', [
 // @access  Private
 router.get('/me', authenticateToken, async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).select('-password');
-    res.json(user);
+    const user = findUserById(req.app, req.user.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    const { password, ...userData } = user;
+    res.json(userData);
   } catch (error) {
     console.error('Get profile error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -176,21 +167,15 @@ router.put('/me', [
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
-
     const { firstName, lastName, phone } = req.body;
     const updateData = {};
-
     if (firstName) updateData.firstName = firstName;
     if (lastName) updateData.lastName = lastName;
     if (phone) updateData.phone = phone;
-
-    const user = await User.findByIdAndUpdate(
-      req.user._id,
-      updateData,
-      { new: true, runValidators: true }
-    ).select('-password');
-
-    res.json(user);
+    const user = updateUser(req.app, req.user.id, updateData);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    const { password, ...userData } = user;
+    res.json(userData);
   } catch (error) {
     console.error('Update profile error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -210,20 +195,13 @@ router.post('/change-password', [
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
-
     const { currentPassword, newPassword } = req.body;
-    const user = await User.findById(req.user._id);
-
-    // Verify current password
-    const isMatch = await user.comparePassword(currentPassword);
-    if (!isMatch) {
+    const user = findUserById(req.app, req.user.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (user.password !== currentPassword) {
       return res.status(400).json({ message: 'Current password is incorrect' });
     }
-
-    // Update password
     user.password = newPassword;
-    await user.save();
-
     res.json({ message: 'Password updated successfully' });
   } catch (error) {
     console.error('Change password error:', error);

@@ -1,84 +1,45 @@
-const mongoose = require('mongoose');
+// In-memory Notification helper
+const { v4: uuidv4 } = require('uuid');
 
-const notificationSchema = new mongoose.Schema({
-  recipient: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  title: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  message: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  type: {
-    type: String,
-    enum: ['ticket_created', 'ticket_updated', 'ticket_assigned', 'comment_added', 'status_change', 'system'],
-    default: 'system'
-  },
-  relatedTicket: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Ticket'
-  },
-  isRead: {
-    type: Boolean,
-    default: false
-  },
-  isEmailSent: {
-    type: Boolean,
-    default: false
-  },
-  emailSentAt: {
-    type: Date
-  },
-  priority: {
-    type: String,
-    enum: ['low', 'medium', 'high'],
-    default: 'medium'
-  },
-  actionUrl: {
-    type: String
-  },
-  metadata: {
-    type: mongoose.Schema.Types.Mixed
+function getNotifications(app) {
+  return app.locals.notifications;
+}
+
+function findNotificationById(app, id) {
+  return app.locals.notifications.find(n => n.id === id);
+}
+
+function addNotification(app, notification) {
+  notification.id = uuidv4();
+  notification.isRead = false;
+  notification.createdAt = new Date();
+  notification.updatedAt = new Date();
+  app.locals.notifications.push(notification);
+  return notification;
+}
+
+function updateNotification(app, id, updates) {
+  const notification = findNotificationById(app, id);
+  if (notification) {
+    Object.assign(notification, updates);
+    notification.updatedAt = new Date();
   }
-}, {
-  timestamps: true
-});
+  return notification;
+}
 
-// Indexes for better query performance
-notificationSchema.index({ recipient: 1, isRead: 1 });
-notificationSchema.index({ createdAt: -1 });
-notificationSchema.index({ type: 1 });
+function deleteNotification(app, id) {
+  const idx = app.locals.notifications.findIndex(n => n.id === id);
+  if (idx !== -1) {
+    app.locals.notifications.splice(idx, 1);
+    return true;
+  }
+  return false;
+}
 
-// Method to mark as read
-notificationSchema.methods.markAsRead = function() {
-  this.isRead = true;
-  return this.save();
-};
-
-// Method to mark email as sent
-notificationSchema.methods.markEmailSent = function() {
-  this.isEmailSent = true;
-  this.emailSentAt = new Date();
-  return this.save();
-};
-
-// Static method to create notification
-notificationSchema.statics.createNotification = function(data) {
-  return this.create(data);
-};
-
-// Static method to get unread notifications for a user
-notificationSchema.statics.getUnreadForUser = function(userId) {
-  return this.find({ recipient: userId, isRead: false })
-    .populate('relatedTicket', 'title status priority')
-    .sort({ createdAt: -1 });
-};
-
-module.exports = mongoose.model('Notification', notificationSchema); 
+module.exports = {
+  getNotifications,
+  findNotificationById,
+  addNotification,
+  updateNotification,
+  deleteNotification
+}; 

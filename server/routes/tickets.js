@@ -3,10 +3,16 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { body, validationResult, query } = require('express-validator');
-const Ticket = require('../models/Ticket');
-const User = require('../models/User');
-const Notification = require('../models/Notification');
-const { authorizeHelpDesk, authorizeGasStation } = require('../middleware/auth');
+const {
+  getTickets,
+  findTicketById,
+  addTicket,
+  updateTicket,
+  addComment
+} = require('../models/Ticket');
+const { getUsers, findUserById } = require('../models/User');
+const { getNotifications, addNotification } = require('../models/Notification');
+const { authorizeHelpDesk } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -44,18 +50,14 @@ const upload = multer({
 });
 
 // Helper function to create notifications
-const createNotification = async (recipientId, title, message, type, relatedTicket = null) => {
-  try {
-    await Notification.create({
-      recipient: recipientId,
-      title,
-      message,
-      type,
-      relatedTicket
-    });
-  } catch (error) {
-    console.error('Notification creation error:', error);
-  }
+const createNotification = (app, recipientId, title, message, type, relatedTicket = null) => {
+  addNotification(app, {
+    recipient: recipientId,
+    title,
+    message,
+    type,
+    relatedTicket
+  });
 };
 
 // @route   POST /api/tickets
@@ -74,7 +76,6 @@ router.post('/', [
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
-
     const {
       title,
       description,
@@ -83,52 +84,31 @@ router.post('/', [
       gasStationLocation,
       customerContact
     } = req.body;
-
-    // Prepare attachments
     const attachments = req.files ? req.files.map(file => ({
       filename: file.filename,
       originalName: file.originalname,
       path: file.path,
       size: file.size
     })) : [];
-
-    // Create ticket
-    const ticket = new Ticket({
+    const ticket = addTicket(req.app, {
       title,
       description,
       priority,
       category,
       gasStationLocation,
-      reportedBy: req.user._id,
+      reportedBy: req.user.id,
       attachments,
-      customerContact: customerContact ? JSON.parse(customerContact) : undefined
+      customerContact: customerContact ? JSON.parse(customerContact) : undefined,
+      status: 'open'
     });
-
-    await ticket.save();
-
-    // Populate user info
-    await ticket.populate('reportedBy', 'firstName lastName email');
-
-    // Create notification for help desk agents
-    const helpDeskUsers = await User.find({ 
-      role: { $in: ['admin', 'help-desk'] },
-      isActive: true 
-    });
-
-    for (const user of helpDeskUsers) {
-      await createNotification(
-        user._id,
-        'New Ticket Created',
-        `New ${priority} priority ticket: ${title}`,
-        'ticket_created',
-        ticket._id
-      );
-    }
-
+    // Notify help desk
+    getUsers(req.app).filter(u => ['admin', 'help-desk'].includes(u.role) && u.isActive)
+      .forEach(user => {
+        createNotification(req.app, user.id, 'New Ticket Created', `New ${priority} priority ticket: ${title}`, 'ticket_created', ticket.id);
+      });
     // Emit real-time update
     const io = req.app.get('io');
     io.emit('ticket-created', { ticket });
-
     res.status(201).json(ticket);
   } catch (error) {
     console.error('Create ticket error:', error);
@@ -144,8 +124,8 @@ router.get('/', [
   query('priority').optional().isIn(['low', 'medium', 'high', 'critical']),
   query('category').optional().isIn(['hardware', 'software', 'network', 'payment', 'fuel-system', 'other']),
   query('location').optional().trim(),
-  query('assignedTo').optional().isMongoId(),
-  query('reportedBy').optional().isMongoId(),
+  query('assignedTo').optional(),
+  query('reportedBy').optional(),
   query('dateFrom').optional().isISO8601(),
   query('dateTo').optional().isISO8601(),
   query('page').optional().isInt({ min: 1 }),
@@ -156,7 +136,6 @@ router.get('/', [
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
-
     const {
       status,
       priority,
@@ -169,49 +148,28 @@ router.get('/', [
       page = 1,
       limit = 20
     } = req.query;
-
-    // Build filter object
-    const filter = {};
-
-    if (status) filter.status = status;
-    if (priority) filter.priority = priority;
-    if (category) filter.category = category;
-    if (location) filter.gasStationLocation = new RegExp(location, 'i');
-    if (assignedTo) filter.assignedTo = assignedTo;
-    if (reportedBy) filter.reportedBy = reportedBy;
-
-    // Date range filter
-    if (dateFrom || dateTo) {
-      filter.createdAt = {};
-      if (dateFrom) filter.createdAt.$gte = new Date(dateFrom);
-      if (dateTo) filter.createdAt.$lte = new Date(dateTo);
-    }
-
-    // Role-based filtering
+    let tickets = getTickets(req.app);
+    if (status) tickets = tickets.filter(t => t.status === status);
+    if (priority) tickets = tickets.filter(t => t.priority === priority);
+    if (category) tickets = tickets.filter(t => t.category === category);
+    if (location) tickets = tickets.filter(t => t.gasStationLocation && t.gasStationLocation.toLowerCase().includes(location.toLowerCase()));
+    if (assignedTo) tickets = tickets.filter(t => t.assignedTo === assignedTo);
+    if (reportedBy) tickets = tickets.filter(t => t.reportedBy === reportedBy);
+    if (dateFrom) tickets = tickets.filter(t => new Date(t.createdAt) >= new Date(dateFrom));
+    if (dateTo) tickets = tickets.filter(t => new Date(t.createdAt) <= new Date(dateTo));
     if (req.user.role === 'gas-station') {
-      filter.reportedBy = req.user._id;
+      tickets = tickets.filter(t => t.reportedBy === req.user.id);
     }
-
+    tickets = tickets.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     // Pagination
     const skip = (page - 1) * limit;
-
-    // Get tickets with pagination
-    const tickets = await Ticket.find(filter)
-      .populate('reportedBy', 'firstName lastName email')
-      .populate('assignedTo', 'firstName lastName email')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
-
-    // Get total count
-    const total = await Ticket.countDocuments(filter);
-
+    const paged = tickets.slice(skip, skip + parseInt(limit));
     res.json({
-      tickets,
+      tickets: paged,
       pagination: {
         currentPage: parseInt(page),
-        totalPages: Math.ceil(total / limit),
-        totalItems: total,
+        totalPages: Math.ceil(tickets.length / limit),
+        totalItems: tickets.length,
         itemsPerPage: parseInt(limit)
       }
     });
@@ -226,20 +184,13 @@ router.get('/', [
 // @access  Private
 router.get('/:id', async (req, res) => {
   try {
-    const ticket = await Ticket.findById(req.params.id)
-      .populate('reportedBy', 'firstName lastName email')
-      .populate('assignedTo', 'firstName lastName email')
-      .populate('comments.user', 'firstName lastName role');
-
+    const ticket = findTicketById(req.app, req.params.id);
     if (!ticket) {
       return res.status(404).json({ message: 'Ticket not found' });
     }
-
-    // Check access permissions
-    if (req.user.role === 'gas-station' && ticket.reportedBy._id.toString() !== req.user._id.toString()) {
+    if (req.user.role === 'gas-station' && ticket.reportedBy !== req.user.id) {
       return res.status(403).json({ message: 'Access denied' });
     }
-
     res.json(ticket);
   } catch (error) {
     console.error('Get ticket error:', error);
@@ -254,7 +205,7 @@ router.put('/:id', [
   authorizeHelpDesk,
   body('status').optional().isIn(['open', 'in-progress', 'resolved', 'closed']),
   body('priority').optional().isIn(['low', 'medium', 'high', 'critical']),
-  body('assignedTo').optional().isMongoId(),
+  body('assignedTo').optional(),
   body('estimatedResolutionTime').optional().isISO8601()
 ], async (req, res) => {
   try {
@@ -262,61 +213,32 @@ router.put('/:id', [
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
-
-    const ticket = await Ticket.findById(req.params.id);
+    const ticket = findTicketById(req.app, req.params.id);
     if (!ticket) {
       return res.status(404).json({ message: 'Ticket not found' });
     }
-
     const {
       status,
       priority,
       assignedTo,
       estimatedResolutionTime
     } = req.body;
-
     const updateData = {};
     if (status) updateData.status = status;
     if (priority) updateData.priority = priority;
     if (assignedTo) updateData.assignedTo = assignedTo;
     if (estimatedResolutionTime) updateData.estimatedResolutionTime = estimatedResolutionTime;
-
-    const updatedTicket = await Ticket.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      { new: true, runValidators: true }
-    )
-    .populate('reportedBy', 'firstName lastName email')
-    .populate('assignedTo', 'firstName lastName email');
-
-    // Create notifications for status changes
+    const updatedTicket = updateTicket(req.app, req.params.id, updateData);
+    // Notifications
     if (status && status !== ticket.status) {
-      await createNotification(
-        ticket.reportedBy,
-        'Ticket Status Updated',
-        `Your ticket "${ticket.title}" status changed to ${status}`,
-        'status_change',
-        ticket._id
-      );
+      createNotification(req.app, ticket.reportedBy, 'Ticket Status Updated', `Your ticket "${ticket.title}" status changed to ${status}`, 'status_change', ticket.id);
     }
-
-    if (assignedTo && assignedTo !== ticket.assignedTo?.toString()) {
-      const assignedUser = await User.findById(assignedTo);
-      if (assignedUser) {
-        await createNotification(
-          assignedTo,
-          'Ticket Assigned',
-          `You have been assigned ticket: ${ticket.title}`,
-          'ticket_assigned',
-          ticket._id
-        );
-      }
+    if (assignedTo && assignedTo !== ticket.assignedTo) {
+      createNotification(req.app, assignedTo, 'Ticket Assigned', `You have been assigned ticket: ${ticket.title}`, 'ticket_assigned', ticket.id);
     }
-
     // Emit real-time update
     const io = req.app.get('io');
-    io.to(`ticket-${ticket._id}`).emit('ticket-updated', { ticket: updatedTicket });
-
+    io.to(`ticket-${ticket.id}`).emit('ticket-updated', { ticket: updatedTicket });
     res.json(updatedTicket);
   } catch (error) {
     console.error('Update ticket error:', error);
@@ -336,49 +258,29 @@ router.post('/:id/comments', [
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
-
-    const ticket = await Ticket.findById(req.params.id);
+    const ticket = findTicketById(req.app, req.params.id);
     if (!ticket) {
       return res.status(404).json({ message: 'Ticket not found' });
     }
-
     const { content, isInternal = false } = req.body;
-
-    // Add comment
-    await ticket.addComment(req.user._id, content, isInternal);
-
-    // Populate the new comment
-    await ticket.populate('comments.user', 'firstName lastName role');
-
-    // Create notification for ticket owner (if comment is not internal)
-    if (!isInternal && ticket.reportedBy.toString() !== req.user._id.toString()) {
-      await createNotification(
-        ticket.reportedBy,
-        'New Comment on Ticket',
-        `New comment on ticket: ${ticket.title}`,
-        'comment_added',
-        ticket._id
-      );
+    addComment(req.app, ticket.id, {
+      user: req.user.id,
+      content,
+      isInternal
+    });
+    // Notifications
+    if (!isInternal && ticket.reportedBy !== req.user.id) {
+      createNotification(req.app, ticket.reportedBy, 'New Comment on Ticket', `New comment on ticket: ${ticket.title}`, 'comment_added', ticket.id);
     }
-
-    // Create notification for assigned agent (if different from commenter)
-    if (ticket.assignedTo && ticket.assignedTo.toString() !== req.user._id.toString()) {
-      await createNotification(
-        ticket.assignedTo,
-        'New Comment on Assigned Ticket',
-        `New comment on your assigned ticket: ${ticket.title}`,
-        'comment_added',
-        ticket._id
-      );
+    if (ticket.assignedTo && ticket.assignedTo !== req.user.id) {
+      createNotification(req.app, ticket.assignedTo, 'New Comment on Assigned Ticket', `New comment on your assigned ticket: ${ticket.title}`, 'comment_added', ticket.id);
     }
-
     // Emit real-time update
     const io = req.app.get('io');
-    io.to(`ticket-${ticket._id}`).emit('comment-added', { 
+    io.to(`ticket-${ticket.id}`).emit('comment-added', { 
       ticket,
       comment: ticket.comments[ticket.comments.length - 1]
     });
-
     res.json(ticket);
   } catch (error) {
     console.error('Add comment error:', error);
@@ -391,60 +293,34 @@ router.post('/:id/comments', [
 // @access  Private (Help Desk)
 router.get('/stats/overview', authorizeHelpDesk, async (req, res) => {
   try {
-    const stats = await Ticket.aggregate([
-      {
-        $group: {
-          _id: null,
-          total: { $sum: 1 },
-          open: { $sum: { $cond: [{ $eq: ['$status', 'open'] }, 1, 0] } },
-          inProgress: { $sum: { $cond: [{ $eq: ['$status', 'in-progress'] }, 1, 0] } },
-          resolved: { $sum: { $cond: [{ $eq: ['$status', 'resolved'] }, 1, 0] } },
-          closed: { $sum: { $cond: [{ $eq: ['$status', 'closed'] }, 1, 0] } },
-          critical: { $sum: { $cond: [{ $eq: ['$priority', 'critical'] }, 1, 0] } },
-          high: { $sum: { $cond: [{ $eq: ['$priority', 'high'] }, 1, 0] } }
-        }
-      }
-    ]);
-
-    // Get tickets by location
-    const locationStats = await Ticket.aggregate([
-      {
-        $group: {
-          _id: '$gasStationLocation',
-          count: { $sum: 1 }
-        }
-      },
-      { $sort: { count: -1 } },
-      { $limit: 10 }
-    ]);
-
-    // Get average resolution time
-    const resolutionTimeStats = await Ticket.aggregate([
-      {
-        $match: {
-          actualResolutionTime: { $exists: true }
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          avgResolutionTime: { $avg: { $subtract: ['$actualResolutionTime', '$createdAt'] } }
-        }
-      }
-    ]);
-
+    const tickets = getTickets(req.app);
+    const stats = {
+      total: tickets.length,
+      open: tickets.filter(t => t.status === 'open').length,
+      inProgress: tickets.filter(t => t.status === 'in-progress').length,
+      resolved: tickets.filter(t => t.status === 'resolved').length,
+      closed: tickets.filter(t => t.status === 'closed').length,
+      critical: tickets.filter(t => t.priority === 'critical').length,
+      high: tickets.filter(t => t.priority === 'high').length
+    };
+    // Tickets by location
+    const locationStats = Object.entries(
+      tickets.reduce((acc, t) => {
+        acc[t.gasStationLocation] = (acc[t.gasStationLocation] || 0) + 1;
+        return acc;
+      }, {})
+    ).map(([location, count]) => ({ _id: location, count }))
+     .sort((a, b) => b.count - a.count)
+     .slice(0, 10);
+    // Average resolution time
+    const resolvedTickets = tickets.filter(t => t.status === 'resolved' && t.createdAt && t.updatedAt);
+    const avgResolutionTime = resolvedTickets.length > 0
+      ? resolvedTickets.reduce((sum, t) => sum + (new Date(t.updatedAt) - new Date(t.createdAt)), 0) / resolvedTickets.length
+      : 0;
     res.json({
-      overview: stats[0] || {
-        total: 0,
-        open: 0,
-        inProgress: 0,
-        resolved: 0,
-        closed: 0,
-        critical: 0,
-        high: 0
-      },
+      overview: stats,
       locationStats,
-      avgResolutionTime: resolutionTimeStats[0]?.avgResolutionTime || 0
+      avgResolutionTime
     });
   } catch (error) {
     console.error('Get stats error:', error);

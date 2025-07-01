@@ -1,91 +1,49 @@
-const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
+// In-memory User helper
+const { v4: uuidv4 } = require('uuid');
 
-const userSchema = new mongoose.Schema({
-  username: {
-    type: String,
-    required: true,
-    unique: true,
-    trim: true,
-    minlength: 3
-  },
-  email: {
-    type: String,
-    required: true,
-    unique: true,
-    lowercase: true,
-    trim: true
-  },
-  password: {
-    type: String,
-    required: true,
-    minlength: 6
-  },
-  role: {
-    type: String,
-    enum: ['admin', 'help-desk', 'gas-station'],
-    default: 'gas-station'
-  },
-  firstName: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  lastName: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  gasStationLocation: {
-    type: String,
-    required: function() { return this.role === 'gas-station'; }
-  },
-  phone: {
-    type: String,
-    trim: true
-  },
-  isActive: {
-    type: Boolean,
-    default: true
-  },
-  lastLogin: {
-    type: Date
-  },
-  profileImage: {
-    type: String
-  }
-}, {
-  timestamps: true
-});
+function getUsers(app) {
+  return app.locals.users;
+}
 
-// Hash password before saving
-userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
-  
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error) {
-    next(error);
-  }
-});
+function findUserById(app, id) {
+  return app.locals.users.find(u => u.id === id);
+}
 
-// Compare password method
-userSchema.methods.comparePassword = async function(candidatePassword) {
-  return bcrypt.compare(candidatePassword, this.password);
-};
+function findUserByEmail(app, email) {
+  return app.locals.users.find(u => u.email === email);
+}
 
-// Get full name
-userSchema.virtual('fullName').get(function() {
-  return `${this.firstName} ${this.lastName}`;
-});
-
-// Remove password from JSON output
-userSchema.methods.toJSON = function() {
-  const user = this.toObject();
-  delete user.password;
+function addUser(app, user) {
+  user.id = uuidv4();
+  user.createdAt = new Date();
+  user.updatedAt = new Date();
+  app.locals.users.push(user);
   return user;
-};
+}
 
-module.exports = mongoose.model('User', userSchema); 
+function updateUser(app, id, updates) {
+  const user = findUserById(app, id);
+  if (user) {
+    Object.assign(user, updates);
+    user.updatedAt = new Date();
+  }
+  return user;
+}
+
+function deleteUser(app, id) {
+  const idx = app.locals.users.findIndex(u => u.id === id);
+  if (idx !== -1) {
+    app.locals.users.splice(idx, 1);
+    return true;
+  }
+  return false;
+}
+
+module.exports = {
+  getUsers,
+  findUserById,
+  findUserByEmail,
+  addUser,
+  updateUser,
+  deleteUser
+}; 
