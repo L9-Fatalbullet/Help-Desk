@@ -8,10 +8,8 @@ import {
   User,
   Menu,
   X,
-  LogOut,
-  Plus
+  LogOut
 } from 'lucide-react';
-import NotificationDropdown from './NotificationDropdown';
 
 const Layout = () => {
   const { user, logout } = useAuth();

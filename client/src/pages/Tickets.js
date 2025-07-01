@@ -18,7 +18,6 @@ const Tickets = () => {
     page: 1,
     limit: 20
   });
-  const [pagination, setPagination] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
 
   const fetchTickets = useCallback(async () => {
@@ -33,7 +32,6 @@ const Tickets = () => {
 
       const response = await axios.get(`/api/tickets?${params}`);
       setTickets(response.data.tickets);
-      setPagination(response.data.pagination);
     } catch (error) {
       setError('Erreur lors du chargement des tickets.');
       setTickets([]);
