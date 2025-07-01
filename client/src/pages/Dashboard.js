@@ -81,9 +81,9 @@ const Dashboard = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+          <h1 className="text-2xl font-bold text-white">TotalAssist Dashboard</h1>
           <p className="text-te-gray">
-            Welcome back, {user?.firstName}! Here's what's happening today.
+            Bienvenue sur TotalAssist, la solution IT help desk pour les stations-service.
           </p>
         </div>
         {user?.role === 'gas-station' && (

@@ -16,9 +16,9 @@ const Login = () => {
       <div className="te-card w-full max-w-md flex flex-col items-center">
         <img src="/te-logo.png" alt="TotalEnergies Logo" className="h-16 mb-4" />
         <h2 className="te-title mb-1" style={{ fontFamily: 'Inter, Segoe UI, Arial, sans-serif' }}>
-          Connexion à <span className="te-title-accent">QR4Safety</span>
+          Connexion à <span className="te-title-accent">TotalAssist</span>
         </h2>
-        <p className="text-te-gray mb-6 text-center">La solution TotalEnergies pour la gestion et le contrôle de sécurité des équipements.</p>
+        <p className="text-te-gray mb-6 text-center">La solution TotalEnergies pour la gestion et le support IT des stations-service.</p>
         <form className="w-full mt-2" onSubmit={handleSubmit}>
           <div className="mb-4">
             <label className="block text-te-gray mb-1">Email</label>

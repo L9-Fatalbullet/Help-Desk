@@ -43,7 +43,7 @@ const Layout = () => {
         <div className="flex items-center px-6 py-5 border-b border-te-card">
           <img src="/te-logo.png" alt="TotalEnergies Logo" className="h-9 mr-3" />
           <span className="text-xl font-bold tracking-tight" style={{ fontFamily: 'Inter, Segoe UI, Arial, sans-serif' }}>
-            Help Desk
+            TotalAssist
           </span>
         </div>
         <nav className="flex-1 px-2 py-6 space-y-2">
@@ -78,7 +78,7 @@ const Layout = () => {
           <aside className="relative w-64 bg-te-header text-white flex flex-col h-full shadow-lg">
             <div className="flex items-center px-6 py-5 border-b border-te-card">
               <img src="/te-logo.png" alt="TotalEnergies Logo" className="h-9 mr-3" />
-              <span className="text-xl font-bold tracking-tight">Help Desk</span>
+              <span className="text-xl font-bold tracking-tight">TotalAssist</span>
               <button className="ml-auto text-te-gray" onClick={() => setSidebarOpen(false)}><X className="h-6 w-6" /></button>
             </div>
             <nav className="flex-1 px-2 py-6 space-y-2">
@@ -107,7 +107,7 @@ const Layout = () => {
         <header className="flex items-center justify-between px-8 py-4 bg-te-header shadow-md md:hidden">
           <div className="flex items-center">
             <img src="/te-logo.png" alt="TotalEnergies Logo" className="h-8 mr-2" />
-            <span className="text-lg font-bold tracking-tight">Help Desk</span>
+            <span className="text-lg font-bold tracking-tight">TotalAssist</span>
           </div>
           <button onClick={handleLogout} className="te-accent-btn flex items-center gap-2 px-4 py-1 text-sm">
             <LogOut className="h-5 w-5" /> Déconnexion
