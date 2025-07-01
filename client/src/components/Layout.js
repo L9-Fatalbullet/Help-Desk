@@ -8,7 +8,6 @@ import {
   User,
   Menu,
   X,
-  Bell,
   LogOut,
   Plus
 } from 'lucide-react';

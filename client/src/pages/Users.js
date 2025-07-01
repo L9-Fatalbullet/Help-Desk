@@ -29,7 +29,7 @@ const Users = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, [filters]);
+  }, [filters, fetchUsers]);
 
   const fetchUsers = async () => {
     try {

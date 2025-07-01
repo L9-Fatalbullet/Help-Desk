@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Filter, Plus } from 'lucide-react';
+import { Search, Plus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 import { format } from 'date-fns';
@@ -22,7 +22,7 @@ const Tickets = () => {
 
   useEffect(() => {
     fetchTickets();
-  }, [filters]);
+  }, [filters, fetchTickets]);
 
   const fetchTickets = async () => {
     try {

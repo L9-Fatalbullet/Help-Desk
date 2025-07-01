@@ -4,7 +4,6 @@ import {
   Ticket,
   Users,
   Clock,
-  TrendingUp,
   AlertTriangle,
   CheckCircle,
   XCircle,

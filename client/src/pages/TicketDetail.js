@@ -3,14 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import {
   ArrowLeft,
-  MessageSquare,
   Download,
   User,
   Clock,
-  MapPin,
-  AlertTriangle,
-  CheckCircle,
-  XCircle
+  MapPin
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
@@ -38,11 +34,10 @@ const TicketDetail = () => {
   useEffect(() => {
     fetchTicket();
     joinTicket(id);
-
     return () => {
       leaveTicket(id);
     };
-  }, [id]);
+  }, [id, fetchTicket, joinTicket, leaveTicket]);
 
   const fetchTicket = async () => {
     try {
@@ -66,19 +61,6 @@ const TicketDetail = () => {
       toast.success('Status updated successfully');
     } catch (error) {
       toast.error('Failed to update status');
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const handleAssignment = async (userId) => {
-    try {
-      setUpdating(true);
-      await axios.put(`/api/tickets/${id}`, { assignedTo: userId });
-      await fetchTicket();
-      toast.success('Ticket assigned successfully');
-    } catch (error) {
-      toast.error('Failed to assign ticket');
     } finally {
       setUpdating(false);
     }
