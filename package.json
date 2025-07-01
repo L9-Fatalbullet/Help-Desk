@@ -1,0 +1,19 @@
+{
+  "name": "gas-station-help-desk",
+  "version": "1.0.0",
+  "description": "Modern web application for IT help-desk team to manage gas station technical problems",
+  "main": "server/index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd server && npm run dev",
+    "client": "cd client && npm start",
+    "build": "cd client && npm run build",
+    "install-all": "npm install && cd server && npm install && cd ../client && npm install"
+  },
+  "keywords": ["help-desk", "gas-station", "ticket-management", "it-support"],
+  "author": "IT Help Desk Team",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+} 
