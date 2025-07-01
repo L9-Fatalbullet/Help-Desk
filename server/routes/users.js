@@ -1,12 +1,6 @@
 const express = require('express');
 const { body, validationResult, query } = require('express-validator');
-const {
-  getUsers,
-  findUserById,
-  addUser,
-  updateUser,
-  deleteUser
-} = require('../models/User');
+const User = require('../models/User');
 const { authenticateToken, authorizeAdmin } = require('../middleware/auth');
 
 const router = express.Router();
@@ -16,26 +10,9 @@ const router = express.Router();
 // @access  Private (Admin)
 router.get('/', [authenticateToken, authorizeAdmin], async (req, res) => {
   try {
-    let users = getUsers(req.app);
-    // Filters
-    if (req.query.role) users = users.filter(u => u.role === req.query.role);
-    if (req.query.isActive) users = users.filter(u => String(u.isActive) === String(req.query.isActive));
-    if (req.query.location) users = users.filter(u => u.gasStationLocation && u.gasStationLocation.toLowerCase().includes(req.query.location.toLowerCase()));
-    users = users.map(u => {
-      const { password, ...userData } = u;
-      return userData;
-    });
-    res.json({
-      users: Array.isArray(users) ? users : [],
-      pagination: {
-        currentPage: 1,
-        totalPages: 1,
-        totalItems: users.length,
-        itemsPerPage: users.length
-      }
-    });
-  } catch (error) {
-    console.error('Get users error:', error);
+    const users = await User.find();
+    res.json(users.map(u => ({ ...u.toObject(), password: undefined })));
+  } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -45,12 +22,10 @@ router.get('/', [authenticateToken, authorizeAdmin], async (req, res) => {
 // @access  Private (Admin)
 router.get('/:id', [authenticateToken, authorizeAdmin], async (req, res) => {
   try {
-    const user = findUserById(req.app, req.params.id);
+    const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
-    const { password, ...userData } = user;
-    res.json(userData);
-  } catch (error) {
-    console.error('Get user error:', error);
+    res.json({ ...user.toObject(), password: undefined });
+  } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -72,13 +47,10 @@ router.put('/:id', [
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
-    const updateData = req.body;
-    const user = updateUser(req.app, req.params.id, updateData);
+    const user = await User.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!user) return res.status(404).json({ message: 'User not found' });
-    const { password, ...userData } = user;
-    res.json(userData);
-  } catch (error) {
-    console.error('Update user error:', error);
+    res.json({ ...user.toObject(), password: undefined });
+  } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -88,12 +60,10 @@ router.put('/:id', [
 // @access  Private (Admin)
 router.delete('/:id', [authenticateToken, authorizeAdmin], async (req, res) => {
   try {
-    const user = findUserById(req.app, req.params.id);
+    const user = await User.findByIdAndDelete(req.params.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
-    deleteUser(req.app, req.params.id);
     res.json({ message: 'User deleted' });
-  } catch (error) {
-    console.error('Delete user error:', error);
+  } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
 });

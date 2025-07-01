@@ -8,6 +8,7 @@ const morgan = require('morgan');
 const dotenv = require('dotenv');
 const path = require('path');
 const fs = require('fs');
+const mongoose = require('mongoose');
 
 const authRoutes = require('./routes/auth');
 const ticketRoutes = require('./routes/tickets');
@@ -26,40 +27,16 @@ const io = socketIo(server, {
   }
 });
 
-// In-memory storage
-app.locals.users = [];
-app.locals.tickets = [];
-app.locals.notifications = [];
-
-// Demo data (optional, can be removed or replaced)
-const { addUser } = require('./models/User');
-addUser(app, {
-  username: 'admin',
-  email: 'admin@gasstation.com',
-  password: 'admin123',
-  firstName: 'Admin',
-  lastName: 'User',
-  role: 'admin',
-  isActive: true
-});
-addUser(app, {
-  username: 'agent',
-  email: 'agent@gasstation.com',
-  password: 'agent123',
-  firstName: 'Help',
-  lastName: 'Desk',
-  role: 'help-desk',
-  isActive: true
-});
-addUser(app, {
-  username: 'staff',
-  email: 'staff@gasstation.com',
-  password: 'staff123',
-  firstName: 'Gas',
-  lastName: 'Station',
-  role: 'gas-station',
-  gasStationLocation: 'Station 1',
-  isActive: true
+// Connect to MongoDB
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+}).then(() => {
+  console.log('Connected to MongoDB');
+  // Optionally seed demo data here if needed
+}).catch((err) => {
+  console.error('Failed to connect to MongoDB:', err);
+  process.exit(1);
 });
 
 // Middleware

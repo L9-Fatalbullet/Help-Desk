@@ -1,8 +1,8 @@
+require('dotenv').config();
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const Ticket = require('../models/Ticket');
-require('dotenv').config();
 
 const demoUsers = [
   {
@@ -102,6 +102,56 @@ const sampleTickets = [
   }
 ];
 
+const users = [
+  {
+    username: 'admin',
+    email: 'admin@gasstation.com',
+    password: 'admin123',
+    firstName: 'Admin',
+    lastName: 'User',
+    role: 'admin',
+    isActive: true
+  },
+  {
+    username: 'agent',
+    email: 'agent@gasstation.com',
+    password: 'agent123',
+    firstName: 'Help',
+    lastName: 'Desk',
+    role: 'help-desk',
+    isActive: true
+  },
+  {
+    username: 'staff',
+    email: 'staff@gasstation.com',
+    password: 'staff123',
+    firstName: 'Gas',
+    lastName: 'Station',
+    role: 'gas-station',
+    gasStationLocation: 'Station 1',
+    isActive: true
+  }
+];
+
+async function seed() {
+  await mongoose.connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+  });
+  for (const userData of users) {
+    const exists = await User.findOne({ email: userData.email });
+    if (!exists) {
+      const hashedPassword = await bcrypt.hash(userData.password, 10);
+      await User.create({ ...userData, password: hashedPassword });
+      console.log(`Created user: ${userData.email}`);
+    } else {
+      console.log(`User already exists: ${userData.email}`);
+    }
+  }
+  await mongoose.disconnect();
+  console.log('Seeding complete.');
+}
+
 async function seedDatabase() {
   try {
     // Connect to MongoDB
@@ -156,4 +206,5 @@ async function seedDatabase() {
 }
 
 // Run the seed function
+seed();
 seedDatabase(); 

@@ -1,49 +1,14 @@
-// In-memory User helper
-const { v4: uuidv4 } = require('uuid');
+const mongoose = require('mongoose');
 
-function getUsers(app) {
-  return app.locals.users;
-}
+const UserSchema = new mongoose.Schema({
+  username: { type: String, required: true, unique: true },
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  firstName: { type: String, required: true },
+  lastName: { type: String, required: true },
+  role: { type: String, enum: ['admin', 'help-desk', 'gas-station'], required: true },
+  isActive: { type: Boolean, default: true },
+  gasStationLocation: { type: String },
+}, { timestamps: true });
 
-function findUserById(app, id) {
-  return app.locals.users.find(u => u.id === id);
-}
-
-function findUserByEmail(app, email) {
-  return app.locals.users.find(u => u.email === email);
-}
-
-function addUser(app, user) {
-  user.id = uuidv4();
-  user.createdAt = new Date();
-  user.updatedAt = new Date();
-  app.locals.users.push(user);
-  return user;
-}
-
-function updateUser(app, id, updates) {
-  const user = findUserById(app, id);
-  if (user) {
-    Object.assign(user, updates);
-    user.updatedAt = new Date();
-  }
-  return user;
-}
-
-function deleteUser(app, id) {
-  const idx = app.locals.users.findIndex(u => u.id === id);
-  if (idx !== -1) {
-    app.locals.users.splice(idx, 1);
-    return true;
-  }
-  return false;
-}
-
-module.exports = {
-  getUsers,
-  findUserById,
-  findUserByEmail,
-  addUser,
-  updateUser,
-  deleteUser
-}; 
+module.exports = mongoose.model('User', UserSchema); 

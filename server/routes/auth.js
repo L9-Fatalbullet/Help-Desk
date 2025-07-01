@@ -1,13 +1,8 @@
 const express = require('express');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
-const {
-  getUsers,
-  findUserByEmail,
-  findUserById,
-  addUser,
-  updateUser
-} = require('../models/User');
+const User = require('../models/User');
 const { authenticateToken, authorizeAdmin } = require('../middleware/auth');
 
 const router = express.Router();
@@ -35,28 +30,21 @@ router.post('/login', [
     }
 
     const { email, password } = req.body;
-    const user = findUserByEmail(req.app, email);
-    if (!user || !user.isActive) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid credentials' });
     }
-    // Plaintext password check (for demo only)
-    if (user.password !== password) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Invalid credentials' });
     }
     user.lastLogin = new Date();
-    // Generate token
-    const token = generateToken(user.id);
+    const token = generateToken(user._id);
     res.json({
       token,
       user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        gasStationLocation: user.gasStationLocation,
-        phone: user.phone
+        ...user.toObject(),
+        password: undefined
       }
     });
   } catch (error) {
@@ -94,24 +82,20 @@ router.post('/register', [
       gasStationLocation,
       phone
     } = req.body;
-    // Check if user already exists
-    const existingUser = getUsers(req.app).find(
-      u => u.email === email || u.username === username
-    );
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ 
-        message: 'User with this email or username already exists' 
-      });
+      return res.status(400).json({ message: 'User already exists' });
     }
     if (role === 'gas-station' && !gasStationLocation) {
       return res.status(400).json({ 
         message: 'Gas station location is required for gas station users' 
       });
     }
-    const user = addUser(req.app, {
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = new User({
       username,
       email,
-      password, // plaintext for demo
+      password: hashedPassword,
       firstName,
       lastName,
       role,
@@ -120,18 +104,8 @@ router.post('/register', [
       isActive: true,
       lastLogin: null
     });
-    res.status(201).json({
-      message: 'User created successfully',
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        gasStationLocation: user.gasStationLocation
-      }
-    });
+    await user.save();
+    res.status(201).json({ message: 'User registered' });
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -143,10 +117,9 @@ router.post('/register', [
 // @access  Private
 router.get('/me', authenticateToken, async (req, res) => {
   try {
-    const user = findUserById(req.app, req.user.id);
+    const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
-    const { password, ...userData } = user;
-    res.json(userData);
+    res.json({ ...user.toObject(), password: undefined });
   } catch (error) {
     console.error('Get profile error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -172,10 +145,9 @@ router.put('/me', [
     if (firstName) updateData.firstName = firstName;
     if (lastName) updateData.lastName = lastName;
     if (phone) updateData.phone = phone;
-    const user = updateUser(req.app, req.user.id, updateData);
+    const user = await User.findByIdAndUpdate(req.user.id, updateData, { new: true });
     if (!user) return res.status(404).json({ message: 'User not found' });
-    const { password, ...userData } = user;
-    res.json(userData);
+    res.json({ ...user.toObject(), password: undefined });
   } catch (error) {
     console.error('Update profile error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -196,12 +168,15 @@ router.post('/change-password', [
       return res.status(400).json({ errors: errors.array() });
     }
     const { currentPassword, newPassword } = req.body;
-    const user = findUserById(req.app, req.user.id);
+    const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
-    if (user.password !== currentPassword) {
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
       return res.status(400).json({ message: 'Current password is incorrect' });
     }
-    user.password = newPassword;
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+    await user.save();
     res.json({ message: 'Password updated successfully' });
   } catch (error) {
     console.error('Change password error:', error);

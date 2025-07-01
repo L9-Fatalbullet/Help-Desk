@@ -13,8 +13,10 @@ const {
 const { getUsers, findUserById } = require('../models/User');
 const { getNotifications, addNotification } = require('../models/Notification');
 const { authorizeHelpDesk } = require('../middleware/auth');
-
+const Ticket = require('../models/Ticket');
+const User = require('../models/User');
 const router = express.Router();
+const { authenticateToken } = require('../middleware/auth');
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -90,21 +92,22 @@ router.post('/', [
       path: file.path,
       size: file.size
     })) : [];
-    const ticket = addTicket(req.app, {
+    const ticket = new Ticket({
       title,
       description,
       priority,
       category,
       gasStationLocation,
-      reportedBy: req.user.id,
+      createdBy: req.user.id,
       attachments,
       customerContact: customerContact ? JSON.parse(customerContact) : undefined,
       status: 'open'
     });
+    await ticket.save();
     // Notify help desk
     getUsers(req.app).filter(u => ['admin', 'help-desk'].includes(u.role) && u.isActive)
       .forEach(user => {
-        createNotification(req.app, user.id, 'New Ticket Created', `New ${priority} priority ticket: ${title}`, 'ticket_created', ticket.id);
+        createNotification(req.app, user.id, 'New Ticket Created', `New ${priority} priority ticket: ${title}`, 'ticket_created', ticket._id);
       });
     // Emit real-time update
     const io = req.app.get('io');
@@ -148,19 +151,21 @@ router.get('/', [
       page = 1,
       limit = 20
     } = req.query;
-    let tickets = getTickets(req.app);
+    let query = {};
+    if (req.user.role === 'gas-station') {
+      query = { createdBy: req.user.id };
+    }
+    const tickets = await Ticket.find(query)
+      .populate('createdBy assignedTo comments.author')
+      .sort({ createdAt: -1 });
     if (status) tickets = tickets.filter(t => t.status === status);
     if (priority) tickets = tickets.filter(t => t.priority === priority);
     if (category) tickets = tickets.filter(t => t.category === category);
     if (location) tickets = tickets.filter(t => t.gasStationLocation && t.gasStationLocation.toLowerCase().includes(location.toLowerCase()));
     if (assignedTo) tickets = tickets.filter(t => t.assignedTo === assignedTo);
-    if (reportedBy) tickets = tickets.filter(t => t.reportedBy === reportedBy);
+    if (reportedBy) tickets = tickets.filter(t => t.createdBy === reportedBy);
     if (dateFrom) tickets = tickets.filter(t => new Date(t.createdAt) >= new Date(dateFrom));
     if (dateTo) tickets = tickets.filter(t => new Date(t.createdAt) <= new Date(dateTo));
-    if (req.user.role === 'gas-station') {
-      tickets = tickets.filter(t => t.reportedBy === req.user.id);
-    }
-    tickets = tickets.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     // Pagination
     const skip = (page - 1) * limit;
     const paged = tickets.slice(skip, skip + parseInt(limit));
@@ -182,13 +187,13 @@ router.get('/', [
 // @route   GET /api/tickets/:id
 // @desc    Get single ticket
 // @access  Private
-router.get('/:id', async (req, res) => {
+router.get('/:id', authenticateToken, async (req, res) => {
   try {
-    const ticket = findTicketById(req.app, req.params.id);
+    const ticket = await Ticket.findById(req.params.id).populate('createdBy assignedTo comments.author');
     if (!ticket) {
       return res.status(404).json({ message: 'Ticket not found' });
     }
-    if (req.user.role === 'gas-station' && ticket.reportedBy !== req.user.id) {
+    if (req.user.role === 'gas-station' && ticket.createdBy !== req.user.id) {
       return res.status(403).json({ message: 'Access denied' });
     }
     res.json(ticket);
@@ -213,7 +218,7 @@ router.put('/:id', [
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
-    const ticket = findTicketById(req.app, req.params.id);
+    const ticket = await Ticket.findById(req.params.id);
     if (!ticket) {
       return res.status(404).json({ message: 'Ticket not found' });
     }
@@ -228,17 +233,17 @@ router.put('/:id', [
     if (priority) updateData.priority = priority;
     if (assignedTo) updateData.assignedTo = assignedTo;
     if (estimatedResolutionTime) updateData.estimatedResolutionTime = estimatedResolutionTime;
-    const updatedTicket = updateTicket(req.app, req.params.id, updateData);
+    const updatedTicket = await Ticket.findByIdAndUpdate(req.params.id, updateData, { new: true });
     // Notifications
     if (status && status !== ticket.status) {
-      createNotification(req.app, ticket.reportedBy, 'Ticket Status Updated', `Your ticket "${ticket.title}" status changed to ${status}`, 'status_change', ticket.id);
+      createNotification(req.app, ticket.createdBy, 'Ticket Status Updated', `Your ticket "${ticket.title}" status changed to ${status}`, 'status_change', ticket._id);
     }
     if (assignedTo && assignedTo !== ticket.assignedTo) {
-      createNotification(req.app, assignedTo, 'Ticket Assigned', `You have been assigned ticket: ${ticket.title}`, 'ticket_assigned', ticket.id);
+      createNotification(req.app, assignedTo, 'Ticket Assigned', `You have been assigned ticket: ${ticket.title}`, 'ticket_assigned', ticket._id);
     }
     // Emit real-time update
     const io = req.app.get('io');
-    io.to(`ticket-${ticket.id}`).emit('ticket-updated', { ticket: updatedTicket });
+    io.to(`ticket-${ticket._id}`).emit('ticket-updated', { ticket: updatedTicket });
     res.json(updatedTicket);
   } catch (error) {
     console.error('Update ticket error:', error);
@@ -258,26 +263,28 @@ router.post('/:id/comments', [
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
-    const ticket = findTicketById(req.app, req.params.id);
+    const ticket = await Ticket.findById(req.params.id);
     if (!ticket) {
       return res.status(404).json({ message: 'Ticket not found' });
     }
     const { content, isInternal = false } = req.body;
-    addComment(req.app, ticket.id, {
-      user: req.user.id,
-      content,
+    const comment = {
+      author: req.user.id,
+      text: content,
       isInternal
-    });
+    };
+    ticket.comments.push(comment);
+    await ticket.save();
     // Notifications
-    if (!isInternal && ticket.reportedBy !== req.user.id) {
-      createNotification(req.app, ticket.reportedBy, 'New Comment on Ticket', `New comment on ticket: ${ticket.title}`, 'comment_added', ticket.id);
+    if (!isInternal && ticket.createdBy !== req.user.id) {
+      createNotification(req.app, ticket.createdBy, 'New Comment on Ticket', `New comment on ticket: ${ticket.title}`, 'comment_added', ticket._id);
     }
     if (ticket.assignedTo && ticket.assignedTo !== req.user.id) {
-      createNotification(req.app, ticket.assignedTo, 'New Comment on Assigned Ticket', `New comment on your assigned ticket: ${ticket.title}`, 'comment_added', ticket.id);
+      createNotification(req.app, ticket.assignedTo, 'New Comment on Assigned Ticket', `New comment on your assigned ticket: ${ticket.title}`, 'comment_added', ticket._id);
     }
     // Emit real-time update
     const io = req.app.get('io');
-    io.to(`ticket-${ticket.id}`).emit('comment-added', { 
+    io.to(`ticket-${ticket._id}`).emit('comment-added', { 
       ticket,
       comment: ticket.comments[ticket.comments.length - 1]
     });
@@ -293,10 +300,11 @@ router.post('/:id/comments', [
 // @access  Private (Help Desk)
 router.get('/stats/overview', async (req, res) => {
   try {
-    let tickets = getTickets(req.app);
+    let query = {};
     if (req.user.role === 'gas-station') {
-      tickets = tickets.filter(t => t.reportedBy === req.user.id);
+      query = { createdBy: req.user.id };
     }
+    const tickets = await Ticket.find(query).populate('createdBy assignedTo comments.author');
     const stats = {
       total: tickets.length,
       open: tickets.filter(t => t.status === 'open').length,
