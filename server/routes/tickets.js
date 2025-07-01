@@ -291,9 +291,12 @@ router.post('/:id/comments', [
 // @route   GET /api/tickets/stats/overview
 // @desc    Get ticket statistics
 // @access  Private (Help Desk)
-router.get('/stats/overview', authorizeHelpDesk, async (req, res) => {
+router.get('/stats/overview', async (req, res) => {
   try {
-    const tickets = getTickets(req.app);
+    let tickets = getTickets(req.app);
+    if (req.user.role === 'gas-station') {
+      tickets = tickets.filter(t => t.reportedBy === req.user.id);
+    }
     const stats = {
       total: tickets.length,
       open: tickets.filter(t => t.status === 'open').length,
