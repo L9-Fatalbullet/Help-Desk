@@ -135,7 +135,9 @@ const TicketDetail = () => {
           </button>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{ticket.title}</h1>
-            <p className="text-gray-600">Ticket #{ticket._id.slice(-8)}</p>
+            <p className="text-gray-600">
+              Ticket #{(ticket._id || ticket.id || '').slice(-8)}
+            </p>
           </div>
         </div>
         
