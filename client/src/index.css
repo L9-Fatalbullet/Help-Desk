@@ -10,7 +10,8 @@
   body {
     @apply bg-gray-50 text-gray-900;
     font-family: 'Inter', 'Segoe UI', 'Arial', sans-serif;
-    background: #f8f9fa;
+    background: #181A1B;
+    color: #B0B3B8;
   }
 }
 
@@ -119,4 +120,42 @@
 .te-gradient-btn:hover {
   box-shadow: 0 4px 16px rgba(0,0,0,0.12);
   opacity: 0.95;
+}
+
+.te-header {
+  background: #202225;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+
+.te-card {
+  background: #23272A;
+  border-radius: 1rem;
+  box-shadow: 0 4px 24px 0 rgba(0,0,0,0.12);
+  padding: 2rem;
+  color: #fff;
+}
+
+.te-accent-btn {
+  background: #FF2B2B;
+  color: #fff;
+  border-radius: 9999px;
+  font-weight: 600;
+  padding: 0.5rem 1.5rem;
+  transition: background 0.2s;
+}
+
+.te-accent-btn:hover {
+  background: #e60000;
+}
+
+.te-title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -1px;
+}
+
+.te-title-accent {
+  color: #FF2B2B;
 } 

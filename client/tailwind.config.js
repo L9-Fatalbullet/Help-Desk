@@ -4,6 +4,7 @@ module.exports = {
     "./src/**/*.{js,jsx,ts,tsx}",
     "./public/index.html"
   ],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
@@ -61,6 +62,11 @@ module.exports = {
         'te-green': '#00C389',
         'te-blue': '#0072FF',
         'te-purple': '#A259FF',
+        'te-dark': '#181A1B',
+        'te-gray': '#B0B3B8',
+        'te-accent': '#FF2B2B',
+        'te-card': '#23272A',
+        'te-header': '#202225',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
@@ -86,6 +92,9 @@ module.exports = {
       },
       backgroundImage: {
         'te-gradient': 'linear-gradient(90deg, #FF2B2B 0%, #FF7F1A 20%, #FFD600 40%, #00C389 60%, #0072FF 80%, #A259FF 100%)',
+      },
+      boxShadow: {
+        'te-card': '0 4px 24px 0 rgba(0,0,0,0.12)',
       },
     },
   },
