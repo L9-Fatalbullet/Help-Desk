@@ -384,7 +384,8 @@ const Users = () => {
                           <div className="flex-shrink-0 h-10 w-10">
                             <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
                               <span className="text-sm font-medium text-primary-600">
-                                {user.firstName[0]}{user.lastName[0]}
+                                {(user.firstName ? user.firstName[0] : '')}
+                                {(user.lastName ? user.lastName[0] : '')}
                               </span>
                             </div>
                           </div>
