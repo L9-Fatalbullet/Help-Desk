@@ -438,7 +438,7 @@ const Users = () => {
           )}
 
           {/* Pagination */}
-          {pagination.totalPages > 1 && (
+          {pagination && pagination.totalPages > 1 && (
             <div className="flex items-center justify-between mt-6">
               <div className="text-sm text-gray-700">
                 Showing {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1} to{' '}

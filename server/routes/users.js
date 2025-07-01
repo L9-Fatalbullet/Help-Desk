@@ -25,7 +25,15 @@ router.get('/', [authenticateToken, authorizeAdmin], async (req, res) => {
       const { password, ...userData } = u;
       return userData;
     });
-    res.json({ users: Array.isArray(users) ? users : [] });
+    res.json({
+      users: Array.isArray(users) ? users : [],
+      pagination: {
+        currentPage: 1,
+        totalPages: 1,
+        totalItems: users.length,
+        itemsPerPage: users.length
+      }
+    });
   } catch (error) {
     console.error('Get users error:', error);
     res.status(500).json({ message: 'Server error' });
