@@ -37,10 +37,11 @@ const Users = () => {
       if (searchTerm) params.append('search', searchTerm);
 
       const response = await axios.get(`/api/users?${params}`);
-      setUsers(response.data.users);
+      setUsers(Array.isArray(response.data.users) ? response.data.users : []);
       setPagination(response.data.pagination);
     } catch (error) {
       console.error('Error fetching users:', error);
+      setUsers([]);
       toast.error('Failed to load users');
     } finally {
       setLoading(false);
@@ -347,7 +348,7 @@ const Users = () => {
             <div className="flex items-center justify-center h-64">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
             </div>
-          ) : users.length === 0 ? (
+          ) : (users || []).length === 0 ? (
             <div className="text-center py-12">
               <p className="text-gray-500 text-lg">No users found</p>
             </div>
@@ -377,7 +378,7 @@ const Users = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {users.map((user) => (
+                  {(users || []).map((user) => (
                     <tr key={user._id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
