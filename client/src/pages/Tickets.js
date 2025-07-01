@@ -9,6 +9,7 @@ const Tickets = () => {
   const { user } = useAuth();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
     status: '',
     priority: '',
@@ -23,6 +24,7 @@ const Tickets = () => {
   const fetchTickets = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const params = new URLSearchParams();
       Object.entries(filters).forEach(([key, value]) => {
         if (value) params.append(key, value);
@@ -33,7 +35,8 @@ const Tickets = () => {
       setTickets(response.data.tickets);
       setPagination(response.data.pagination);
     } catch (error) {
-      console.error('Error fetching tickets:', error);
+      setError('Erreur lors du chargement des tickets.');
+      setTickets([]);
     } finally {
       setLoading(false);
     }
@@ -53,204 +56,158 @@ const Tickets = () => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'open': return 'badge-warning';
-      case 'in-progress': return 'badge-info';
-      case 'resolved': return 'badge-success';
-      case 'closed': return 'badge-gray';
-      default: return 'badge-gray';
+      case 'open': return 'bg-yellow-700 text-yellow-200';
+      case 'in-progress': return 'bg-blue-700 text-blue-200';
+      case 'resolved': return 'bg-green-700 text-green-200';
+      case 'closed': return 'bg-gray-700 text-gray-200';
+      default: return 'bg-gray-700 text-gray-200';
     }
   };
 
   const getPriorityColor = (priority) => {
     switch (priority) {
-      case 'critical': return 'badge-danger';
-      case 'high': return 'badge-warning';
-      case 'medium': return 'badge-info';
-      case 'low': return 'badge-success';
-      default: return 'badge-gray';
+      case 'critical': return 'bg-red-700 text-red-200';
+      case 'high': return 'bg-orange-700 text-orange-200';
+      case 'medium': return 'bg-blue-700 text-blue-200';
+      case 'low': return 'bg-green-700 text-green-200';
+      default: return 'bg-gray-700 text-gray-200';
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-2">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Tickets</h1>
-          <p className="text-gray-600">Manage and track support tickets</p>
+          <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Inter, Segoe UI, Arial, sans-serif' }}>Tickets</h1>
+          <p className="text-te-gray">Gérez et suivez les tickets de support</p>
         </div>
         {user?.role === 'gas-station' && (
-          <Link to="/tickets/create" className="btn btn-primary">
-            <Plus className="h-4 w-4 mr-2" />
-            New Ticket
+          <Link to="/tickets/create" className="te-accent-btn flex items-center gap-2">
+            <Plus className="h-4 w-4" /> Nouveau ticket
           </Link>
         )}
       </div>
 
       {/* Filters */}
-      <div className="card">
-        <div className="card-body">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            {/* Search */}
-            <div className="lg:col-span-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search tickets..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                  className="input pl-10"
-                />
-              </div>
+      <div className="te-card">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          {/* Search */}
+          <div className="lg:col-span-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-te-gray" />
+              <input
+                type="text"
+                placeholder="Rechercher un ticket..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                className="w-full pl-10 py-2 rounded bg-te-dark border border-te-gray text-white focus:outline-none focus:ring-2 focus:ring-te-accent"
+              />
             </div>
+          </div>
 
-            {/* Status Filter */}
-            <div>
-              <select
-                value={filters.status}
-                onChange={(e) => handleFilterChange('status', e.target.value)}
-                className="input"
-              >
-                <option value="">All Status</option>
-                <option value="open">Open</option>
-                <option value="in-progress">In Progress</option>
-                <option value="resolved">Resolved</option>
-                <option value="closed">Closed</option>
-              </select>
-            </div>
+          {/* Status Filter */}
+          <div>
+            <select
+              value={filters.status}
+              onChange={(e) => handleFilterChange('status', e.target.value)}
+              className="w-full py-2 rounded bg-te-dark border border-te-gray text-white focus:outline-none focus:ring-2 focus:ring-te-accent"
+            >
+              <option value="">Tous les statuts</option>
+              <option value="open">Ouvert</option>
+              <option value="in-progress">En cours</option>
+              <option value="resolved">Résolu</option>
+              <option value="closed">Fermé</option>
+            </select>
+          </div>
 
-            {/* Priority Filter */}
-            <div>
-              <select
-                value={filters.priority}
-                onChange={(e) => handleFilterChange('priority', e.target.value)}
-                className="input"
-              >
-                <option value="">All Priority</option>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="critical">Critical</option>
-              </select>
-            </div>
+          {/* Priority Filter */}
+          <div>
+            <select
+              value={filters.priority}
+              onChange={(e) => handleFilterChange('priority', e.target.value)}
+              className="w-full py-2 rounded bg-te-dark border border-te-gray text-white focus:outline-none focus:ring-2 focus:ring-te-accent"
+            >
+              <option value="">Toutes les priorités</option>
+              <option value="low">Basse</option>
+              <option value="medium">Moyenne</option>
+              <option value="high">Haute</option>
+              <option value="critical">Critique</option>
+            </select>
+          </div>
 
-            {/* Category Filter */}
-            <div>
-              <select
-                value={filters.category}
-                onChange={(e) => handleFilterChange('category', e.target.value)}
-                className="input"
-              >
-                <option value="">All Categories</option>
-                <option value="hardware">Hardware</option>
-                <option value="software">Software</option>
-                <option value="network">Network</option>
-                <option value="payment">Payment</option>
-                <option value="fuel-system">Fuel System</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
+          {/* Category Filter */}
+          <div>
+            <select
+              value={filters.category}
+              onChange={(e) => handleFilterChange('category', e.target.value)}
+              className="w-full py-2 rounded bg-te-dark border border-te-gray text-white focus:outline-none focus:ring-2 focus:ring-te-accent"
+            >
+              <option value="">Toutes les catégories</option>
+              <option value="hardware">Matériel</option>
+              <option value="software">Logiciel</option>
+              <option value="network">Réseau</option>
+              <option value="payment">Paiement</option>
+              <option value="fuel-system">Système carburant</option>
+              <option value="other">Autre</option>
+            </select>
           </div>
         </div>
       </div>
 
       {/* Tickets List */}
-      <div className="card">
-        <div className="card-body">
-          {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-            </div>
-          ) : tickets.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500 text-lg">No tickets found</p>
-              {user?.role === 'gas-station' && (
-                <Link to="/tickets/create" className="btn btn-primary mt-4">
-                  Create your first ticket
-                </Link>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {tickets.map((ticket) => (
-                <div
-                  key={ticket._id}
-                  className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <Link
-                          to={`/tickets/${ticket._id}`}
-                          className="text-lg font-medium text-primary-600 hover:text-primary-800"
-                        >
-                          {ticket.title}
-                        </Link>
-                        <span className={`badge ${getStatusColor(ticket.status)}`}>
-                          {ticket.status.replace('-', ' ')}
+      <div className="te-card">
+        {loading ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-te-accent"></div>
+          </div>
+        ) : error ? (
+          <div className="text-center py-12 text-red-400">{error}</div>
+        ) : tickets.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-te-gray text-lg">Aucun ticket trouvé</p>
+            {user?.role === 'gas-station' && (
+              <Link to="/tickets/create" className="te-accent-btn mt-4">Créer un premier ticket</Link>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {tickets.map((ticket) => (
+              <div
+                key={ticket.id || ticket._id}
+                className="border border-te-header rounded-lg p-4 hover:bg-te-header transition-colors"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-3 mb-2">
+                      <Link
+                        to={`/tickets/${ticket.id || ticket._id}`}
+                        className="text-lg font-medium text-te-accent hover:underline"
+                      >
+                        {ticket.title}
+                      </Link>
+                      <span className={`px-2 py-1 rounded text-xs font-semibold ml-2 ${getStatusColor(ticket.status)}`}>{ticket.status?.replace('-', ' ')}</span>
+                      <span className={`px-2 py-1 rounded text-xs font-semibold ml-2 ${getPriorityColor(ticket.priority)}`}>{ticket.priority}</span>
+                      {ticket.category && (
+                        <span className="px-2 py-1 rounded text-xs font-semibold ml-2 bg-te-gray text-te-dark">
+                          {ticket.category}
                         </span>
-                        <span className={`badge ${getPriorityColor(ticket.priority)}`}>
-                          {ticket.priority}
-                        </span>
-                        {ticket.category && (
-                          <span className="badge badge-gray">
-                            {ticket.category}
-                          </span>
-                        )}
-                      </div>
-                      
-                      <p className="text-gray-600 mb-2 line-clamp-2">
-                        {ticket.description}
-                      </p>
-                      
-                      <div className="flex items-center space-x-4 text-sm text-gray-500">
-                        <span>📍 {ticket.gasStationLocation}</span>
-                        <span>👤 {ticket.reportedBy?.firstName} {ticket.reportedBy?.lastName}</span>
-                        {ticket.assignedTo && (
-                          <span>🔧 Assigned to {ticket.assignedTo?.firstName} {ticket.assignedTo?.lastName}</span>
-                        )}
-                        <span>📅 {format(new Date(ticket.createdAt), 'MMM d, yyyy')}</span>
-                      </div>
+                      )}
+                    </div>
+                    <div className="text-te-gray text-sm mb-1">
+                      {ticket.gasStationLocation && <span className="mr-2"><b>Station:</b> {ticket.gasStationLocation}</span>}
+                      <span><b>Créé:</b> {format(new Date(ticket.createdAt), 'dd/MM/yyyy HH:mm')}</span>
                     </div>
                   </div>
+                  <div className="flex flex-col items-end gap-2">
+                    <Link to={`/tickets/${ticket.id || ticket._id}`} className="te-accent-btn px-4 py-1 text-sm">Voir</Link>
+                  </div>
                 </div>
-              ))}
-            </div>
-          )}
-
-          {/* Pagination */}
-          {pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between mt-6">
-              <div className="text-sm text-gray-700">
-                Showing {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1} to{' '}
-                {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} of{' '}
-                {pagination.totalItems} results
               </div>
-              
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => handleFilterChange('page', pagination.currentPage - 1)}
-                  disabled={pagination.currentPage === 1}
-                  className="btn btn-secondary btn-sm disabled:opacity-50"
-                >
-                  Previous
-                </button>
-                <span className="flex items-center px-3 text-sm text-gray-700">
-                  Page {pagination.currentPage} of {pagination.totalPages}
-                </span>
-                <button
-                  onClick={() => handleFilterChange('page', pagination.currentPage + 1)}
-                  disabled={pagination.currentPage === pagination.totalPages}
-                  className="btn btn-secondary btn-sm disabled:opacity-50"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
