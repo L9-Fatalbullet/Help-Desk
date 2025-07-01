@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import {
@@ -31,15 +31,7 @@ const TicketDetail = () => {
     reset
   } = useForm();
 
-  useEffect(() => {
-    fetchTicket();
-    joinTicket(id);
-    return () => {
-      leaveTicket(id);
-    };
-  }, [id, fetchTicket, joinTicket, leaveTicket]);
-
-  const fetchTicket = async () => {
+  const fetchTicket = useCallback(async () => {
     try {
       setLoading(true);
       const response = await axios.get(`/api/tickets/${id}`);
@@ -51,7 +43,15 @@ const TicketDetail = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, navigate]);
+
+  useEffect(() => {
+    fetchTicket();
+    joinTicket(id);
+    return () => {
+      leaveTicket(id);
+    };
+  }, [id, fetchTicket, joinTicket, leaveTicket]);
 
   const handleStatusUpdate = async (newStatus) => {
     try {

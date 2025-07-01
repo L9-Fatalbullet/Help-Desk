@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Plus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -20,11 +20,7 @@ const Tickets = () => {
   const [pagination, setPagination] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    fetchTickets();
-  }, [filters, fetchTickets]);
-
-  const fetchTickets = async () => {
+  const fetchTickets = useCallback(async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
@@ -41,7 +37,11 @@ const Tickets = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, searchTerm]);
+
+  useEffect(() => {
+    fetchTickets();
+  }, [fetchTickets]);
 
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value, page: 1 }));

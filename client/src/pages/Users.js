@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { Plus, Edit, Trash2, Search } from 'lucide-react';
 import axios from 'axios';
@@ -27,11 +27,7 @@ const Users = () => {
     setValue
   } = useForm();
 
-  useEffect(() => {
-    fetchUsers();
-  }, [filters, fetchUsers]);
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
@@ -49,7 +45,11 @@ const Users = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, searchTerm]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value, page: 1 }));
