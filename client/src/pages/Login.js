@@ -12,28 +12,30 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-md flex flex-col items-center">
+    <div className="min-h-screen flex items-center justify-center bg-te-dark">
+      <div className="te-card w-full max-w-md flex flex-col items-center">
         <img src="/te-logo.png" alt="TotalEnergies Logo" className="h-16 mb-4" />
-        <h2 className="text-2xl font-bold mb-2" style={{ fontFamily: 'Inter, Segoe UI, Arial, sans-serif' }}>
-          TotalEnergies Help Desk
+        <h2 className="te-title mb-1" style={{ fontFamily: 'Inter, Segoe UI, Arial, sans-serif' }}>
+          Connexion à <span className="te-title-accent">QR4Safety</span>
         </h2>
-        <form className="w-full mt-4" onSubmit={handleSubmit}>
+        <p className="text-te-gray mb-6 text-center">La solution TotalEnergies pour la gestion et le contrôle de sécurité des équipements.</p>
+        <form className="w-full mt-2" onSubmit={handleSubmit}>
           <div className="mb-4">
-            <label className="block text-gray-700 mb-1">Email</label>
+            <label className="block text-te-gray mb-1">Email</label>
             <input
               type="email"
-              className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-te-blue"
+              className="w-full px-3 py-2 rounded bg-te-dark border border-te-gray text-white focus:outline-none focus:ring-2 focus:ring-te-accent"
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
+              autoFocus
             />
           </div>
           <div className="mb-6">
-            <label className="block text-gray-700 mb-1">Password</label>
+            <label className="block text-te-gray mb-1">Mot de passe</label>
             <input
               type="password"
-              className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-te-blue"
+              className="w-full px-3 py-2 rounded bg-te-dark border border-te-gray text-white focus:outline-none focus:ring-2 focus:ring-te-accent"
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
@@ -42,10 +44,10 @@ const Login = () => {
           {error && <div className="text-red-500 mb-2 text-sm">{error}</div>}
           <button
             type="submit"
-            className="te-gradient-btn w-full py-2 text-lg font-semibold mt-2"
+            className="te-accent-btn w-full py-2 text-lg font-semibold mt-2"
             disabled={loading}
           >
-            {loading ? 'Logging in...' : 'Login'}
+            {loading ? 'Connexion...' : 'Se connecter'}
           </button>
         </form>
       </div>
