@@ -5,6 +5,7 @@ const authenticateToken = async (req, res, next) => {
   try {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
+    console.log('authenticateToken middleware:', authHeader, 'token:', token);
 
     if (!token) {
       return res.status(401).json({ message: 'Access token required' });
