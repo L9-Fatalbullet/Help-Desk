@@ -221,4 +221,26 @@ async function listUsers() {
 
 // Run the seed function
 // seed();
-seedDatabase(); 
+seedDatabase();
+
+// Utility: Reset admin password
+async function resetAdminPassword() {
+  await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/help-desk');
+  const bcrypt = require('bcryptjs');
+  const newPassword = 'password123';
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  const result = await User.findOneAndUpdate(
+    { email: 'admin@helpdesk.com' },
+    { password: hashedPassword },
+    { new: true }
+  );
+  if (result) {
+    console.log('Admin password reset to password123');
+  } else {
+    console.log('Admin user not found');
+  }
+  await mongoose.disconnect();
+}
+
+// Uncomment to reset admin password
+// resetAdminPassword(); 
