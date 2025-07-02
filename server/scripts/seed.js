@@ -205,6 +205,20 @@ async function seedDatabase() {
   }
 }
 
+// Utility: List all users in the database
+async function listUsers() {
+  await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/help-desk');
+  const users = await User.find({});
+  console.log('\nCurrent users in the database:');
+  users.forEach(u => {
+    console.log(`- Email: ${u.email}, Username: ${u.username}, Role: ${u.role}`);
+  });
+  await mongoose.disconnect();
+}
+
+// Uncomment to list users
+// listUsers();
+
 // Run the seed function
 // seed();
 seedDatabase(); 
