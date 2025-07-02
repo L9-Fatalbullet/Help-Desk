@@ -206,5 +206,5 @@ async function seedDatabase() {
 }
 
 // Run the seed function
-seed();
+// seed();
 seedDatabase(); 
