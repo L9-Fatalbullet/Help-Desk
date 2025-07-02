@@ -82,7 +82,7 @@ const sampleTickets = [
     priority: 'medium',
     category: 'network',
     gasStationLocation: 'Downtown Station',
-    status: 'resolved'
+    status: 'closed'
   },
   {
     title: 'Software Update Required',
