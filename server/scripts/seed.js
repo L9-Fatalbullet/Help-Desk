@@ -71,7 +71,7 @@ const sampleTickets = [
   {
     title: 'Payment System Down',
     description: 'All payment terminals are showing "Connection Error". Customers cannot complete transactions.',
-    priority: 'critical',
+    priority: 'high',
     category: 'payment',
     gasStationLocation: 'Highway Station',
     status: 'in-progress'
