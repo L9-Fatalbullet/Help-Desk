@@ -226,12 +226,10 @@ seedDatabase();
 // Utility: Reset admin password
 async function resetAdminPassword() {
   await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/help-desk');
-  const bcrypt = require('bcryptjs');
-  const newPassword = 'password123';
-  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  const knownGoodHash = '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZGHFQW1Yy1Q8z4UJ1p/2lWq3oi5/S';
   const result = await User.findOneAndUpdate(
     { email: 'admin@helpdesk.com' },
-    { password: hashedPassword },
+    { password: knownGoodHash },
     { new: true }
   );
   if (result) {
