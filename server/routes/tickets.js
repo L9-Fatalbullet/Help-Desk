@@ -134,6 +134,7 @@ router.get('/', [
   query('page').optional().isInt({ min: 1 }),
   query('limit').optional().isInt({ min: 1, max: 100 })
 ], async (req, res) => {
+  console.log('GET /api/tickets', req.user);
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

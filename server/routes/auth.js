@@ -118,6 +118,7 @@ router.post('/register', [
 // @desc    Get current user profile
 // @access  Private
 router.get('/me', authenticateToken, async (req, res) => {
+  console.log('GET /api/auth/me', req.user);
   try {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
