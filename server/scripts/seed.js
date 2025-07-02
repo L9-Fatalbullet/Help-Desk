@@ -183,7 +183,7 @@ async function seedDatabase() {
 
       const ticket = new Ticket({
         ...ticketData,
-        reportedBy: reportedBy._id,
+        createdBy: reportedBy._id,
         assignedTo: assignedTo?._id
       });
 
